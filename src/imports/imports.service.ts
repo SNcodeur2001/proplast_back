@@ -28,13 +28,20 @@ export interface ImportReport {
   invalidRows: number;
 }
 
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  buffer: Buffer;
+  size: number;
+}
+
 @Injectable()
 export class ImportsService {
   constructor(private prisma: PrismaService) {}
 
-  private async processSingleExcel(
-    file,
-  ): Promise<ImportReport> {
+  private async processSingleExcel(file: MulterFile): Promise<ImportReport> {
     const workbook = XLSX.read(file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
@@ -61,36 +68,44 @@ export class ImportsService {
       }
     }
 
-    // 2️⃣ Insertion en base (skip doublons email)
-    const result = await this.prisma.client.createMany({
-      data: validClients,
-      skipDuplicates: true,
-    });
+    // 2️⃣ Transaction Prisma: insertion clients + création rapport import
+    const transactionResult = await this.prisma.$transaction(async (tx) => {
+      // Insertion des clients (skip doublons email)
+      const result = await tx.client.createMany({
+        data: validClients,
+        skipDuplicates: true,
+      });
 
-    const insertedCount = result.count;
-    const duplicateCount = validClients.length - insertedCount;
+      const insertedCount = result.count;
+      const duplicateCount = validClients.length - insertedCount;
+      const finalInvalidCount = invalidCount + duplicateCount;
 
-    const finalInvalidCount = invalidCount + duplicateCount;
+      // Création du rapport d'import
+      const importRecord = await tx.import.create({
+        data: {
+          filename: file.originalname,
+          totalRows: rows.length,
+          validRows: insertedCount,
+          invalidRows: finalInvalidCount,
+        },
+      });
 
-    // 3️⃣ Enregistrement de l'import
-    await this.prisma.import.create({
-      data: {
-        filename: file.originalname,
-        totalRows: rows.length,
-        validRows: insertedCount,
-        invalidRows: finalInvalidCount,
-      },
+      return {
+        insertedCount,
+        finalInvalidCount,
+        importRecord,
+      };
     });
 
     return {
       filename: file.originalname,
       totalRows: rows.length,
-      validRows: insertedCount,
-      invalidRows: finalInvalidCount,
+      validRows: transactionResult.insertedCount,
+      invalidRows: transactionResult.finalInvalidCount,
     };
   }
 
-  async processExcels(files) {
+  async processExcels(files: MulterFile[]) {
     const reports: ImportReport[] = [];
 
     for (const file of files) {

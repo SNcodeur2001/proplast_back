@@ -33,10 +33,10 @@ export class ExportService {
     const time = new Date().toISOString().split('T')[1].split('.')[0]; // HH:MM:SS
     const filename = `clients_export_${date}_${time}.xlsx`;
 
-    const exportDir = path.join(__dirname, '../../exported');
+    const exportDir = path.join(process.cwd(), 'exported');
 
     if (!fs.existsSync(exportDir)) {
-      fs.mkdirSync(exportDir);
+      fs.mkdirSync(exportDir, { recursive: true });
     }
 
     const exportPath = path.join(exportDir, filename);

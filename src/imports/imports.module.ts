@@ -8,3 +8,4 @@ import { PrismaService } from '../prisma/prisma.service';
   providers: [ImportsService, PrismaService]
 })
 export class ImportsModule {}
+//on met ici tous les imports dont on a besoin pour le module imports

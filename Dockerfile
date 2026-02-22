@@ -28,7 +28,7 @@ RUN addgroup --system --gid 1001 nodejs && \
 WORKDIR /app
 
 # Copier seulement ce qui est nécessaire
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist/src ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./

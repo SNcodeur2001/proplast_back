@@ -8,12 +8,18 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 
+const jwtExpiresIn = (): string | number => {
+  const expiresIn = process.env.JWT_EXPIRES_IN;
+  if (!expiresIn) return '7d';
+  return expiresIn;
+};
+
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'secretKey',
-      signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
+      signOptions: { expiresIn: jwtExpiresIn() as any },
     }),
   ],
   providers: [

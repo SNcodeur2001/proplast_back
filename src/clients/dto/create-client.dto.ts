@@ -1,23 +1,37 @@
-import { IsString, IsOptional, IsEmail } from 'class-validator';
+import { IsString, IsOptional, IsEmail, IsIn } from 'class-validator';
 
 export class CreateClientDto {
   @IsString()
-  nom!: string;
+  nom!: string; // Obligatoire
 
   @IsOptional()
   @IsString()
-  prenom?: string;
+  personneContact?: string;
+
+  @IsOptional()
+  @IsString()
+  numero?: string;
+
+  @IsOptional()
+  @IsString()
+  adresse?: string;
+
+  @IsIn(['SOGEVADE', 'RECUPLAST'])
+  contacteVia!: string; // Obligatoire
 
   @IsOptional()
   @IsEmail()
   email?: string;
 
+  @IsOptional()
   @IsString()
-  telephone!: string;
+  telephone?: string;
 
+  @IsOptional()
   @IsString()
-  site!: string;
+  site?: string;
 
+  @IsOptional()
   @IsString()
-  type!: string; // Client, Trieur, Partenaire
+  type?: string;
 }

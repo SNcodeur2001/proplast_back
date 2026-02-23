@@ -1,23 +1,31 @@
 import * as XLSX from 'xlsx';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface ExcelRow {
-  Nom?: string;
-  Prenom?: string;
-  Email?: string;
-  Telephone?: string;
-  Site?: string;
-  Type?: string;
+  'Nom/Structure'?: string;
+  'Personne Contact'?: string;
+  'Numéro'?: string;
+  'Adresse'?: string;
+  'Contacté via'?: string;
+  'Email'?: string;
+  'Téléphone'?: string;
+  'Site'?: string;
+  'Type'?: string;
 }
 
 interface ClientData {
   nom: string;
-  prenom: string;
-  email: string;
-  telephone: string;
-  site: string;
-  type: string;
+  personneContact?: string | null;
+  numero?: string | null;
+  adresse?: string | null;
+  contacteVia: string;
+  email?: string | null;
+  telephone?: string | null;
+  site?: string | null;
+  type?: string | null;
   createdAt: Date;
 }
 
@@ -41,6 +49,62 @@ interface MulterFile {
 export class ImportsService {
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Génère le template Excel à télécharger
+   */
+  async generateTemplate(): Promise<{ filename: string; path: string }> {
+    const headers = [
+      'Nom/Structure',
+      'Personne Contact',
+      'Numéro',
+      'Adresse',
+      'Contacté via',
+      'Email',
+      'Téléphone',
+      'Site',
+      'Type',
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet([], {
+      header: headers,
+    });
+
+    const exampleData = [
+      {
+        'Nom/Structure': 'Exemple Entreprise',
+        'Personne Contact': 'Jean Dupont',
+        'Numéro': '001',
+        'Adresse': '123 Rue de Paris',
+        'Contacté via': 'SOGEVADE',
+        'Email': 'contact@exemple.com',
+        'Téléphone': '+33612345678',
+        'Site': 'Paris',
+        'Type': 'Client',
+      },
+    ];
+
+    const exampleSheet = XLSX.utils.json_to_sheet(exampleData);
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template');
+    XLSX.utils.book_append_sheet(workbook, exampleSheet, 'Exemple');
+
+    const templateDir = path.join(process.cwd(), 'templates');
+    if (!fs.existsSync(templateDir)) {
+      fs.mkdirSync(templateDir, { recursive: true });
+    }
+
+    const filename = 'template_import_clients.xlsx';
+    const templatePath = path.join(templateDir, filename);
+
+    XLSX.writeFile(workbook, templatePath);
+
+    return { filename, path: templatePath };
+  }
+
+  /**
+   * Traite un fichier Excel d'import
+   */
   private async processSingleExcel(file: MulterFile): Promise<ImportReport> {
     const workbook = XLSX.read(file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
@@ -51,26 +115,33 @@ export class ImportsService {
     const validClients: ClientData[] = [];
     let invalidCount = 0;
 
-    // 1️⃣ Validation des données
     for (const row of rows) {
-      if (row.Nom && row.Email) {
-        validClients.push({
-          nom: row.Nom,
-          prenom: row.Prenom || '',
-          email: row.Email,
-          telephone: row.Telephone || '',
-          site: row.Site || '',
-          type: row.Type || 'Client',
-          createdAt: new Date(),
-        });
-      } else {
+      if (!row['Nom/Structure'] || !row['Contacté via']) {
         invalidCount++;
+        continue;
       }
+
+      const contacteVia = row['Contacté via']?.trim().toUpperCase();
+      if (!['SOGEVADE', 'RECUPLAST'].includes(contacteVia)) {
+        invalidCount++;
+        continue;
+      }
+
+      validClients.push({
+        nom: row['Nom/Structure'],
+        personneContact: row['Personne Contact'] || null,
+        numero: row['Numéro'] || null,
+        adresse: row['Adresse'] || null,
+        contacteVia: contacteVia,
+        email: row['Email'] || null,
+        telephone: row['Téléphone'] || null,
+        site: row['Site'] || null,
+        type: row['Type'] || null,
+        createdAt: new Date(),
+      });
     }
 
-    // 2️⃣ Transaction Prisma: insertion clients + création rapport import
     const transactionResult = await this.prisma.$transaction(async (tx) => {
-      // Insertion des clients (skip doublons email)
       const result = await tx.client.createMany({
         data: validClients,
         skipDuplicates: true,
@@ -80,7 +151,6 @@ export class ImportsService {
       const duplicateCount = validClients.length - insertedCount;
       const finalInvalidCount = invalidCount + duplicateCount;
 
-      // Création du rapport d'import
       const importRecord = await tx.import.create({
         data: {
           filename: file.originalname,

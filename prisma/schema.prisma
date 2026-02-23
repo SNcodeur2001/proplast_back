@@ -15,21 +15,24 @@ model User {
 }
 
 model Client {
-  id        String   @id @default(uuid())
-  nom       String
-  prenom    String?
-  email     String?  @unique
-  telephone String?  @unique
-  site      String
-  type      String
-  createdAt DateTime @default(now())
+  id              String   @id @default(uuid())
+  nom             String   // Nom/structure (obligatoire)
+  personneContact String?  // Personne contact (optionnel)
+  numero          String?  // Numéro (optionnel)
+  adresse         String?  // Adresse (optionnel)
+  contacteVia     String?   // SOGEVADE ou RECUPLAST (obligatoire)
+  email           String?  @unique
+  telephone       String?  @unique
+  site            String?
+  type            String?
+  createdAt       DateTime @default(now())
 }
 
 model Import {
-  id         String   @id @default(uuid())
-  filename   String
-  totalRows  Int
-  validRows  Int
+  id          String   @id @default(uuid())
+  filename    String
+  totalRows   Int
+  validRows   Int
   invalidRows Int
-  createdAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
 }

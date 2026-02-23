@@ -190,3 +190,49 @@ curl -X GET http://localhost:3000/clients \
 | Endpoint | GET | POST | PUT | DELETE |
 |----------|-----|------|-----|--------|
 | `/clients` | ANALYST, ADMIN | ADMIN | ADMIN | ADMIN |
+
+### 📥 Imports
+
+#### Télécharger le template d'import
+```bash
+GET /imports/template
+Authorization: Bearer <token>
+```
+**Accès:** ADMIN, ANALYST
+
+**Le template contient les colonnes:**
+- `Nom/Structure` (obligatoire)
+- `Personne Contact` (optionnel)
+- `Numéro` (optionnel)
+- `Adresse` (optionnel)
+- `Contacté via` (obligatoire: SOGEVADE ou RECUPLAST)
+- `Email` (optionnel)
+- `Téléphone` (optionnel)
+- `Site` (optionnel)
+- `Type` (optionnel)
+
+#### Importer des clients
+```bash
+POST /imports/files
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+
+Form-Data:
+  file: <fichier.xlsx>
+```
+**Accès:** ADMIN only
+
+**Réponse:**
+```json
+{
+  "totalFiles": 1,
+  "reports": [
+    {
+      "filename": "clients.xlsx",
+      "totalRows": 100,
+      "validRows": 95,
+      "invalidRows": 5
+    }
+  ]
+}
+```

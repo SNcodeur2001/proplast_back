@@ -15,7 +15,7 @@ export class ExportService {
     // 2. Transformer en rows Excel
     const rows = clients.map((client) => ({
       Nom: client.nom,
-      Prenom: client.prenom,
+      // Prenom: client.prenom,
       Email: client.email,
       Telephone: client.telephone,
       Site: client.site,
